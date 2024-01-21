@@ -6,7 +6,7 @@ This extension is for maintainers who receive Git patches through emails. It sho
 
 You can set the IMAP related configs in settings:
 
-![Settings](images/settings.png)
+<img src="images/settings.png" alt="Settings" width="600"/>
 
 For the Inbox folder, it is better to see the extension's output channel. For Gmail it can be `INBOX` or `[Gmail]/All Mail` and for Yahoo `Inbox` or `Archive`.
 
