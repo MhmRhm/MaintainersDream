@@ -1,36 +1,199 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
-const vscode = require('vscode');
+const os = require('os');
+const path = require('path');
+const fs = require('fs');
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
+const vscode = require('vscode');
+const imaps = require('imap-simple');
+const simpleGit = require('simple-git');
+
+
+let outputChannel;
+function writeToOutputChannel(message) {
+    outputChannel.appendLine(message);
+
+    const config = vscode.workspace.getConfiguration('maintainersdream');
+    if (config.get('showconsole', true)) {
+        outputChannel.show(true);
+    }
+}
+
+const readMail = async () => {
+    let emails = new Map();
+
+    const config = vscode.workspace.getConfiguration('maintainersdream');
+    let mail_config = {
+        imap: {
+            user: config.get('user', ''),
+            password: config.get('password', ''),
+            host: config.get('host', ''),
+            port: config.get('port', ''),
+            authTimeout: 10000,
+            tls: true,
+            tlsOptions: { rejectUnauthorized: false }
+        }
+    };
+
+    try {
+        writeToOutputChannel(JSON.stringify(mail_config));
+        const connection = await imaps.connect(mail_config);
+        writeToOutputChannel('Mail Server Connection Successful' + new Date().toString());
+
+        connection.getBoxes((error, mailboxes) => {
+            if (error) {
+                writeToOutputChannel(error.message);
+                return;
+            }
+            writeToOutputChannel("Available Mailboxes (see settings):" + JSON.stringify(mailboxes));
+        });
+
+        await connection.openBox(config.get('inbox', 'Inbox'));
+        const searchCriteria = ['ALL'];
+        const fetchOptions = {
+            bodies: ['HEADER', 'TEXT'],
+            markSeen: false
+        };
+
+        const results = await connection.search(searchCriteria, fetchOptions);
+        results.forEach((res) => {
+            const header = res.parts.filter((part) => {
+                return part.which === 'HEADER';
+            });
+            const body = res.parts.filter((part) => {
+                return part.which === 'TEXT';
+            });
+            emails.set(res.attributes.uid, { sub: header[0].body.subject[0], msg: body[0].body });
+        });
+
+        connection.end();
+
+    } catch (error) {
+        writeToOutputChannel(error.message);
+    }
+
+    return emails;
+};
+
+
+class EmailItem extends vscode.TreeItem {
+    constructor(id, sub, collapsibleState, contextValue) {
+        super(sub, collapsibleState);
+        this.id = id;
+        this.contextValue = contextValue;
+    }
+}
+
+
+class EmailDataProvider {
+    constructor() {
+        this.emails = new Map();
+        this._onDidChangeTreeData = new vscode.EventEmitter();
+        this.onDidChangeTreeData = this._onDidChangeTreeData.event;
+        this.updateMailbox();
+    }
+
+    updateMailbox() {
+        readMail().then((result) => {
+            this.emails = result;
+            this._onDidChangeTreeData.fire();
+        });
+    }
+
+    getTreeItem(element) {
+        return element;
+    }
+
+    getChildren(element) {
+        if (!element) {
+            return Promise.resolve([
+                new EmailItem(0, 'Inbox', vscode.TreeItemCollapsibleState.Collapsed)
+            ]);
+        } else {
+            writeToOutputChannel("Inbox Updated");
+            return Promise.resolve(
+                Array.from(this.emails, ([id, email]) => (new EmailItem(id, email.sub, vscode.TreeItemCollapsibleState.None, "patch-item")))
+            );
+        }
+    }
+
+    getParent(element) {
+        return null;
+    }
+
+    handleItemClick(item) {
+        vscode.workspace.openTextDocument({
+            language: 'diff',
+            content: this.emails.get(item.id).msg
+        }).then((document) => {
+            vscode.window.showTextDocument(document, {
+                viewColumn: vscode.ViewColumn.One,
+                preserveFocus: true,
+                preview: true,
+                viewOptions: {
+                    readOnly: true
+                }
+            });
+        });
+    }
+}
+
 
 /**
  * @param {vscode.ExtensionContext} context
  */
 function activate(context) {
+    outputChannel = vscode.window.createOutputChannel('Maintainers Dream');
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "maintainersdream" is now active!');
+    vscode.window.registerTreeDataProvider('mail-folders',
+        new EmailDataProvider()
+    );
+    const treeDataProvider = new EmailDataProvider();
+    const treeView = vscode.window.createTreeView('mail-folders', {
+        treeDataProvider: treeDataProvider
+    });
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with  registerCommand
-	// The commandId parameter must match the command field in package.json
-	let disposable = vscode.commands.registerCommand('maintainersdream.helloWorld', function () {
-		// The code you place here will be executed every time your command is executed
+    treeView.onDidChangeSelection((event) => {
+        const selectedItem = event.selection[0];
+        if (selectedItem instanceof EmailItem) {
+            treeDataProvider.handleItemClick(selectedItem);
+        }
+    });
 
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from MaintainersDream!');
-	});
+    const config = vscode.workspace.getConfiguration('maintainersdream');
+    treeView.title = config.get('user', '');
 
-	context.subscriptions.push(disposable);
+    vscode.commands.registerCommand('maintainersdream.updatemailbox', () => {
+        treeDataProvider.updateMailbox();
+    });
+
+    vscode.commands.registerCommand('maintainersdream.applypatch', async (email) => {
+        try {
+            const tempFolderPath = path.join(os.tmpdir(), 'my_temp_folder');
+            if (!fs.existsSync(tempFolderPath)) {
+                fs.mkdirSync(tempFolderPath);
+            }
+            const filePath = path.join(tempFolderPath, "temp.patch");
+            fs.writeFileSync(filePath, treeDataProvider.emails.get(email.id).msg);
+
+            writeToOutputChannel("looking for repository at:" + vscode.workspace.workspaceFolders[0].uri.fsPath);
+
+            const git = simpleGit(vscode.workspace.workspaceFolders[0].uri.fsPath);
+            await git.applyPatch(filePath, {
+                '--whitespace': 'fix',
+                '--reject': null,
+                '--verbose': null
+            });
+
+            writeToOutputChannel('Patch applied successfully.');
+
+        } catch (error) {
+            writeToOutputChannel('Error applying patch:' + error.message);
+        }
+    });
 }
 
-// This method is called when your extension is deactivated
-function deactivate() {}
+function deactivate() { }
 
 module.exports = {
-	activate,
-	deactivate
+    activate,
+    deactivate
 }

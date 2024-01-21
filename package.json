@@ -12,10 +12,87 @@
   "activationEvents": [],
   "main": "./extension.js",
   "contributes": {
-    "commands": [{
-      "command": "maintainersdream.helloWorld",
-      "title": "Hello World"
-    }]
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "mail-explorer",
+          "title": "Mail Explorer",
+          "icon": "$(mail)"
+        }
+      ]
+    },
+    "views": {
+      "mail-explorer": [
+        {
+          "id": "mail-folders",
+          "name": "Not Set. Go to Settings.",
+          "contextualTitle": "Account"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "maintainersdream.applypatch",
+        "title": "Apply Patch",
+        "icon": "$(merge)"
+      },
+      {
+        "command": "maintainersdream.updatemailbox",
+        "title": "Update Mailbox",
+        "icon": "$(refresh)"
+      }
+    ],
+    "menus": {
+      "view/item/context": [
+        {
+          "command": "maintainersdream.applypatch",
+          "when": "view == mail-folders && viewItem == patch-item",
+          "group": "inline"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "maintainersdream.updatemailbox",
+          "when": "view == mail-folders",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Maintainers Dream",
+      "properties": {
+        "maintainersdream.user": {
+          "type": "string",
+          "default": "",
+          "description": "Email Address"
+        },
+        "maintainersdream.password": {
+          "type": "string",
+          "default": "",
+          "description": "IMAP API Access Password (consult provider documentation)"
+        },
+        "maintainersdream.host": {
+          "type": "string",
+          "default": "",
+          "description": "IMAP Server Address (consult provider documentation)"
+        },
+        "maintainersdream.port": {
+          "type": "number",
+          "default": "993",
+          "description": "IMAP Server Port (consult provider documentation)"
+        },
+        "maintainersdream.inbox": {
+          "type": "string",
+          "default": "Inbox",
+          "description": "Email Folder (consult provider documentation or see the output channel for possible options)"
+        },
+        "maintainersdream.showconsole": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show Extension Outputs"
+        }
+      }
+    }
   },
   "scripts": {
     "lint": "eslint .",
@@ -30,5 +107,9 @@
     "typescript": "^5.3.3",
     "@vscode/test-cli": "^0.0.4",
     "@vscode/test-electron": "^2.3.8"
+  },
+  "dependencies": {
+    "imap-simple": "^5.1.0",
+    "simple-git": "^3.22.0"
   }
 }
