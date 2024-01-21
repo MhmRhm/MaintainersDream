@@ -6,7 +6,7 @@ This extension is for maintainers who receive Git patches through emails. It sho
 
 You can set the IMAP related configs in settings:
 
-\!\[Settings\]\(images/settings.png\)
+![Settings](images/settings.png)
 
 For the Inbox folder, it is better to see the extension's output channel. For Gmail it can be `INBOX` or `[Gmail]/All Mail` and for Yahoo `Inbox` or `Archive`.
 
@@ -15,8 +15,8 @@ For the Password setting, you can acquire an App Password for Gmail from the fol
 
 You can refresh your inbox to get the new emails and open a patch mail by clicking on each item:
 
-\!\[Emails\]\(images/emails.png\)
+![Emails](images/emails.png)
 
 If it is a patch email, you can click the patch button to integrate the work in the current folder:
 
-\!\[Patching\]\(images/patching.png\)
+![Patching](images/patching.gif)
