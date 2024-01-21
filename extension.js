@@ -88,13 +88,16 @@ class EmailDataProvider {
         this.emails = new Map();
         this._onDidChangeTreeData = new vscode.EventEmitter();
         this.onDidChangeTreeData = this._onDidChangeTreeData.event;
-        this.updateMailbox();
     }
 
-    updateMailbox() {
+    updateMailbox(view) {
         readMail().then((result) => {
             this.emails = result;
             this._onDidChangeTreeData.fire();
+            if (view) {
+                const config = vscode.workspace.getConfiguration('maintainersdream');
+                view.title = config.get('user', '');
+            }
         });
     }
 
@@ -157,12 +160,11 @@ function activate(context) {
             treeDataProvider.handleItemClick(selectedItem);
         }
     });
-
-    const config = vscode.workspace.getConfiguration('maintainersdream');
-    treeView.title = config.get('user', '');
+    treeView.title = "Loading...";
 
     vscode.commands.registerCommand('maintainersdream.updatemailbox', () => {
-        treeDataProvider.updateMailbox();
+        treeView.title = "Loading..."
+        treeDataProvider.updateMailbox(treeView);
     });
 
     vscode.commands.registerCommand('maintainersdream.applypatch', async (email) => {
@@ -172,7 +174,9 @@ function activate(context) {
                 fs.mkdirSync(tempFolderPath);
             }
             const filePath = path.join(tempFolderPath, "temp.patch");
-            fs.writeFileSync(filePath, treeDataProvider.emails.get(email.id).msg);
+            fs.writeFileSync(filePath, treeDataProvider.emails.get(email.id).msg.replace(/\r\n/g, "\n"), {
+                encoding: "utf8"
+              });
 
             writeToOutputChannel("looking for repository at:" + vscode.workspace.workspaceFolders[0].uri.fsPath);
 
