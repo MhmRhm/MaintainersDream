@@ -2,6 +2,14 @@
 
 This extension is for maintainers who receive Git patches through emails. It shows their inbox, patch content, and a one-click way to apply the patch to the current folder. A maintainer's dream come true!
 
+To create a _.vsix_ file:
+```bash
+cd myExtension
+npm install
+npm install -g @vscode/vsce
+vsce package
+```
+
 ## Features
 
 You can set the IMAP related configs in settings:
