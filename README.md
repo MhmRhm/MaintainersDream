@@ -15,8 +15,8 @@ For the Password setting, you can acquire an App Password for Gmail from the fol
 
 You can refresh your inbox to get the new emails and open a patch mail by clicking on each item:
 
-![Emails](images/emails.png)
+<img src="images/emails.png" alt="Emails"/>
 
 If it is a patch email, you can click the patch button to integrate the work in the current folder:
 
-![Patching](images/patching.gif)
+<img src="images/patching.gif" alt="Patching"/>

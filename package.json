@@ -6,6 +6,11 @@
   "engines": {
     "vscode": "^1.85.0"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MhmRhm/MaintainersDream.git"
+  },
+  "homepage": "https://github.com/MhmRhm/MaintainersDream/blob/main/README.md",
   "categories": [
     "Other"
   ],
